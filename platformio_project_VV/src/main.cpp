@@ -299,8 +299,6 @@ void setup() {
 
   separator();
 
-  BLEDevice central = BLE.central();
-
   // End of setup
   Serial.println("Setup done!");
 }
@@ -315,7 +313,7 @@ void loop() {
     while (central.connected()) {
       if (customChar.written()) {
         // Read the value sent from the central
-        String received = String((const char *)customChar.value());
+        String received = String((const char *)customChar.value(), customChar.valueLength());
         Serial.print("Received via BLE: ");
         Serial.println(received);
       }
