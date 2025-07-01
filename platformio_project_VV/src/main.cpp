@@ -14,8 +14,8 @@
 Adafruit_INA237 ina237 = Adafruit_INA237();
 
 // BLE Objects
-BLEService customService("180C"); // Custom Service
-BLECharacteristic customChar("2A56", BLERead | BLENotify, 20); // Custom Characteristic
+BLEService customService(BLE_SERVICE_UUID); // Custom Service
+BLECharacteristic customChar(BLE_CHARACTERISTIC_UUID, BLERead | BLEWrite | BLENotify, 20);
 
 // Function to scan I2C devices on the bus
 // This function will print the addresses of all devices found on the I2C bus
@@ -235,12 +235,11 @@ void setup() {
     while (1);
   }
   BLE.setLocalName("ESP32-Yaxsomo");
-  BLE.setAdvertisedServiceUuid("180C");
-  BLE.setAdvertisedService(customService); // Advertise the custom service
   customService.addCharacteristic(customChar); // Add characteristic to the service
   BLE.addService(customService); // Add service to BLE stack
+  BLE.setAdvertisedService(customService);
   BLE.advertise();
-  Serial.println("BLE initialized and advertising as ESP32-BLE-Test");
+  Serial.println("BLE initialized and advertising as ESP32-Yaxsomo");
 
   separator();
 
@@ -300,16 +299,13 @@ void setup() {
 
   separator();
 
+  BLEDevice central = BLE.central();
+
   // End of setup
   Serial.println("Setup done!");
 }
 
 void loop() {
-  
-  test_rg_led();
-
-  test_buzzer();
-
   BLEDevice central = BLE.central();
 
   if (central) {
@@ -317,38 +313,19 @@ void loop() {
     Serial.println(central.address());
 
     while (central.connected()) {
-      if (customChar.subscribed()) {
-        Serial.println("Central subscribed. Sending BLE notification...");
-        customChar.writeValue("Hello from ESP32 via BLE!", true);
-      } else {
-        Serial.println("Central connected but not subscribed.");
+      if (customChar.written()) {
+        // Read the value sent from the central
+        String received = String((const char *)customChar.value());
+        Serial.print("Received via BLE: ");
+        Serial.println(received);
       }
-      delay(1000); // Wait between notifications
+
+      delay(100); // Short delay to avoid flooding
     }
 
     Serial.print("Disconnected from central: ");
     Serial.println(central.address());
   }
 
-  //Get current sensor data
-  get_current_sensor_data();
-
-  float tmpTemp = tmp126.readTemperature();
-  Serial.print("TMP126 Temperature: ");
-  Serial.print(tmpTemp);
-  Serial.println(" °C");
-
-
-  Serial.print("NTC1 Temperature: ");
-  Serial.print(read_ntc_temperature(NTC1));
-  Serial.println(" °C");
-
-  Serial.print("NTC2 Temperature: ");
-  Serial.print(read_ntc_temperature(NTC2));
-  Serial.println(" °C");
-
-  separator();
-
-  // Delay between loops
-  delay(1000);
+  delay(100); // Optional: short idle delay when not connected
 }
