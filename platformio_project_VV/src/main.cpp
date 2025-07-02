@@ -35,8 +35,16 @@ BLECharacteristic *pCharacteristic;
 bool deviceConnected = false;
 
 class MyServerCallbacks : public BLEServerCallbacks {
-  void onConnect(BLEServer* pServer) { deviceConnected = true; }
-  void onDisconnect(BLEServer* pServer) { deviceConnected = false; }
+  void onConnect(BLEServer* pServer) { 
+    deviceConnected = true; 
+    Serial.println("Central Connected.");
+  }
+  void onDisconnect(BLEServer* pServer) {
+     deviceConnected = false; 
+     Serial.println("Central Disconnected.");
+    }
+
+
 };
 
 std::string lastValue = "";
@@ -314,7 +322,8 @@ void setup() {
 void loop() {
   if (deviceConnected) {
     std::string value = pCharacteristic->getValue();
-    if (!value.empty() && value != lastValue) {
+    pCharacteristic->setValue(""); // Clear BLE characteristic value after reading
+    if (!value.empty()) {
       String received = String(value.c_str());
       lastValue = value;
       Serial.print("Received via BLE: ");
