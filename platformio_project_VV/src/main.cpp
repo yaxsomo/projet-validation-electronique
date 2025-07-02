@@ -11,8 +11,8 @@
 
 // Custom Libraries
 #include "configuration.h"
-#include "tmp126.h"
-#include "ntc.h"
+#include "tmp126/tmp126.h"
+#include <ntc/ntc.h>
 
 // Helper function to parse command string to CommandType enum
 CommandType parseCommand(String command) {
