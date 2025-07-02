@@ -10,8 +10,9 @@
 #include <string.h>
 
 // Custom Libraries
-#include "tmp126.h"
 #include "configuration.h"
+#include "tmp126/tmp126.h"
+#include <ntc/ntc.h>
 
 // Helper function to parse command string to CommandType enum
 CommandType parseCommand(String command) {
@@ -34,8 +35,16 @@ BLECharacteristic *pCharacteristic;
 bool deviceConnected = false;
 
 class MyServerCallbacks : public BLEServerCallbacks {
-  void onConnect(BLEServer* pServer) { deviceConnected = true; }
-  void onDisconnect(BLEServer* pServer) { deviceConnected = false; }
+  void onConnect(BLEServer* pServer) { 
+    deviceConnected = true; 
+    Serial.println("Central Connected.");
+  }
+  void onDisconnect(BLEServer* pServer) {
+     deviceConnected = false; 
+     Serial.println("Central Disconnected.");
+    }
+
+
 };
 
 std::string lastValue = "";
@@ -171,31 +180,6 @@ void get_current_sensor_data(){
   
 }
 
-float read_ntc_temperature(NTC_devices_t device) {
-  const float R1 = 10000.0; // 10k pull-up
-  const float T0 = 298.15;  // 25°C in Kelvin
-  const float B = 3435.0;   // Beta value
-  const float R0 = 10000.0; // 10k reference resistance
-  int adcValue = 0; // Initialize adcValue to avoid compilation error
-
-  switch (device)
-  {
-  case  NTC1:
-    adcValue = analogRead(NTC1_PIN);
-    break;
-  case NTC2:
-    adcValue = analogRead(NTC2_PIN);
-    break;
-  default:
-    break;
-  }
-  
-  float Vout = adcValue * 3.3 / 4095.0;
-  float Rntc = R1 * Vout / (3.3 - Vout);
-  float tempK = 1.0 / (1.0 / T0 + log(Rntc / R0) / B);
-  return tempK - 273.15;
-}
-
 void test_buzzer() {
   Serial.println("Testing buzzer...");
   ledcWrite(0, 128); // 50% duty cycle for audible tone
@@ -275,7 +259,7 @@ void setup() {
 
   Serial.println("BLE initialized and advertising as ESP32-Yaxsomo");
 
-  separator();
+  separator(); // -------------------------------------
 
   // 2. Initialize Buzzer PWM
   Serial.printf("Initializing Buzzer...");
@@ -295,7 +279,7 @@ void setup() {
   ledcWrite(LED_RED_PWM_CHANNEL, 0);
   Serial.printf("Done.\n");
 
-  separator();
+  separator(); // -------------------------------------
 
   // Initialize I2C
   Serial.printf("Initializing I2C...");
@@ -303,35 +287,33 @@ void setup() {
   Wire.setPins(21, 22);
   Serial.printf("Done.\n");
 
-  separator();
+  separator(); // -------------------------------------
 
-  // Initialize Analog Pins
+  //Initialize Analog Pins
   Serial.printf("Initializing Analog Pins...");
-  analogReadResolution(12); // 12-bit resolution
-  pinMode(NTC1_PIN, INPUT);
-  pinMode(NTC2_PIN, INPUT);
+  ntc_init();
   Serial.printf("Done.\n");
 
-  separator();
+  separator(); // -------------------------------------
 
   // Initialize TMP126
   Serial.printf("Initializing TMP126...");
   tmp126.begin();
   Serial.printf("Done.\n");
 
-  separator();
+  separator(); // -------------------------------------
 
   // Scan I2C devices
   scan_i2c_port();
 
-  separator();
+  separator(); // -------------------------------------
 
   //Setup current sensor
   Serial.printf("Setting up current sensor...");
   setup_current_sensor();
   Serial.printf("Done.\n");
 
-  separator();
+  separator(); // -------------------------------------
 
   // End of setup
   Serial.println("Setup done!");
@@ -340,7 +322,8 @@ void setup() {
 void loop() {
   if (deviceConnected) {
     std::string value = pCharacteristic->getValue();
-    if (!value.empty() && value != lastValue) {
+    pCharacteristic->setValue(""); // Clear BLE characteristic value after reading
+    if (!value.empty()) {
       String received = String(value.c_str());
       lastValue = value;
       Serial.print("Received via BLE: ");
