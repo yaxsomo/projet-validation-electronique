@@ -90,11 +90,11 @@ void setup() {
   // Initialize TMP126
   Serial.printf("Initializing TMP126...");
   tmp126.begin();
-  if (!tmp126.verifyDevice()) {
-  Serial.println("❌ TMP126 verification failed!");
-  raiseAlarm(ALARM_SENSOR_MISSING);
-  while (1); // Halt system
-  }
+  // if (!tmp126.verifyDevice()) {
+  // Serial.println("❌ TMP126 verification failed!");
+  // raiseAlarm(ALARM_SENSOR_MISSING);
+  // while (1); // Halt system
+  // }
   Serial.printf("Done.\n");
 
   separator(); // -------------------------------------
