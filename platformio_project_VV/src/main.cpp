@@ -3,19 +3,42 @@
 #include <Wire.h>
 #include <Adafruit_INA237.h>
 #include <SPI.h>
-#include <ArduinoBLE.h>
+#include <BLEDevice.h>
+#include <BLEServer.h>
+#include <BLEUtils.h>
+#include <BLE2902.h>
+#include <string.h>
 
 // Custom Libraries
 #include "tmp126.h"
 #include "configuration.h"
 
+// Helper function to parse command string to CommandType enum
+CommandType parseCommand(String command) {
+  command.trim();
+  command.toUpperCase();
+  if (command.startsWith("LED")) return CMD_LED;
+  if (command.startsWith("SPI")) return CMD_SPI;
+  if (command.startsWith("BUZZER")) return CMD_BUZZER;
+  if (command.startsWith("I2C")) return CMD_I2C;
+  if (command.startsWith("CTN")) return CMD_CTN;
+  if (command.startsWith("INA")) return CMD_INA;
+  return CMD_NONE;
+}
 
 // Peripheral Objects
 Adafruit_INA237 ina237 = Adafruit_INA237();
 
 // BLE Objects
-BLEService customService("180C"); // Custom Service
-BLECharacteristic customChar("2A56", BLERead | BLENotify, 20); // Custom Characteristic
+BLECharacteristic *pCharacteristic;
+bool deviceConnected = false;
+
+class MyServerCallbacks : public BLEServerCallbacks {
+  void onConnect(BLEServer* pServer) { deviceConnected = true; }
+  void onDisconnect(BLEServer* pServer) { deviceConnected = false; }
+};
+
+std::string lastValue = "";
 
 // Function to scan I2C devices on the bus
 // This function will print the addresses of all devices found on the I2C bus
@@ -208,7 +231,8 @@ void test_rg_led() {
 
 void test_bluetooth() {
   Serial.println("Testing BLE (notify)...");
-  customChar.writeValue("Hello from ESP32 via BLE!", true);
+  pCharacteristic->setValue("Hello from ESP32 via BLE!");
+  pCharacteristic->notify();
   Serial.println("BLE notification sent.");
 }
 
@@ -230,17 +254,26 @@ void setup() {
   Serial.println("Starting setup...");
 
   Serial.printf("Initializing BLE...");
-  if (!BLE.begin()) {
-    Serial.println("BLE initialization failed!");
-    while (1);
-  }
-  BLE.setLocalName("ESP32-Yaxsomo");
-  BLE.setAdvertisedServiceUuid("180C");
-  BLE.setAdvertisedService(customService); // Advertise the custom service
-  customService.addCharacteristic(customChar); // Add characteristic to the service
-  BLE.addService(customService); // Add service to BLE stack
-  BLE.advertise();
-  Serial.println("BLE initialized and advertising as ESP32-BLE-Test");
+  BLEDevice::init("ESP32-Yaxsomo");
+  BLEServer *pServer = BLEDevice::createServer();
+  pServer->setCallbacks(new MyServerCallbacks());
+
+  BLEService *pService = pServer->createService(BLE_SERVICE_UUID);
+
+  pCharacteristic = pService->createCharacteristic(
+                      BLE_CHARACTERISTIC_UUID,
+                      BLECharacteristic::PROPERTY_READ |
+                      BLECharacteristic::PROPERTY_WRITE |
+                      BLECharacteristic::PROPERTY_NOTIFY);
+
+  pCharacteristic->addDescriptor(new BLE2902());
+
+  pService->start();
+  BLEAdvertising *pAdvertising = BLEDevice::getAdvertising();
+  pAdvertising->addServiceUUID(pService->getUUID());
+  pAdvertising->start();
+
+  Serial.println("BLE initialized and advertising as ESP32-Yaxsomo");
 
   separator();
 
@@ -305,50 +338,45 @@ void setup() {
 }
 
 void loop() {
-  
-  test_rg_led();
-
-  test_buzzer();
-
-  BLEDevice central = BLE.central();
-
-  if (central) {
-    Serial.print("Connected to central: ");
-    Serial.println(central.address());
-
-    while (central.connected()) {
-      if (customChar.subscribed()) {
-        Serial.println("Central subscribed. Sending BLE notification...");
-        customChar.writeValue("Hello from ESP32 via BLE!", true);
-      } else {
-        Serial.println("Central connected but not subscribed.");
+  if (deviceConnected) {
+    std::string value = pCharacteristic->getValue();
+    if (!value.empty() && value != lastValue) {
+      String received = String(value.c_str());
+      lastValue = value;
+      Serial.print("Received via BLE: ");
+      Serial.println(received);
+      CommandType cmdType = parseCommand(received);
+      switch (cmdType) {
+        case CMD_LED:
+          test_rg_led();
+          break;
+        case CMD_SPI:
+          Serial.println("SPI command received (not implemented).");
+          break;
+        case CMD_BUZZER:
+          test_buzzer();
+          break;
+        case CMD_I2C:
+          scan_i2c_port();
+          break;
+        case CMD_CTN:
+          {
+            float t1 = read_ntc_temperature(NTC1);
+            float t2 = read_ntc_temperature(NTC2);
+            Serial.print("NTC1: "); Serial.print(t1); Serial.print(" C, ");
+            Serial.print("NTC2: "); Serial.print(t2); Serial.println(" C");
+          }
+          break;
+        case CMD_INA:
+          get_current_sensor_data();
+          break;
+        case CMD_NONE:
+        default:
+          Serial.println("Unknown command.");
+          break;
       }
-      delay(1000); // Wait between notifications
     }
-
-    Serial.print("Disconnected from central: ");
-    Serial.println(central.address());
   }
 
-  //Get current sensor data
-  get_current_sensor_data();
-
-  float tmpTemp = tmp126.readTemperature();
-  Serial.print("TMP126 Temperature: ");
-  Serial.print(tmpTemp);
-  Serial.println(" °C");
-
-
-  Serial.print("NTC1 Temperature: ");
-  Serial.print(read_ntc_temperature(NTC1));
-  Serial.println(" °C");
-
-  Serial.print("NTC2 Temperature: ");
-  Serial.print(read_ntc_temperature(NTC2));
-  Serial.println(" °C");
-
-  separator();
-
-  // Delay between loops
-  delay(1000);
+  delay(100); // Optional: short idle delay when not connected
 }
