@@ -4,11 +4,24 @@
 #include <Adafruit_INA237.h>
 #include <SPI.h>
 #include <ArduinoBLE.h>
+#include <string.h>
 
 // Custom Libraries
 #include "tmp126.h"
 #include "configuration.h"
 
+// Helper function to parse command string to CommandType enum
+CommandType parseCommand(String command) {
+  command.trim();
+  command.toUpperCase();
+  if (command.startsWith("LED")) return CMD_LED;
+  if (command.startsWith("SPI")) return CMD_SPI;
+  if (command.startsWith("BUZZER")) return CMD_BUZZER;
+  if (command.startsWith("I2C")) return CMD_I2C;
+  if (command.startsWith("CTN")) return CMD_CTN;
+  if (command.startsWith("INA")) return CMD_INA;
+  return CMD_NONE;
+}
 
 // Peripheral Objects
 Adafruit_INA237 ina237 = Adafruit_INA237();
@@ -316,6 +329,36 @@ void loop() {
         String received = String((const char *)customChar.value(), customChar.valueLength());
         Serial.print("Received via BLE: ");
         Serial.println(received);
+        CommandType cmdType = parseCommand(received);
+        switch (cmdType) {
+          case CMD_LED:
+            test_rg_led();
+            break;
+          case CMD_SPI:
+            Serial.println("SPI command received (not implemented).");
+            break;
+          case CMD_BUZZER:
+            test_buzzer();
+            break;
+          case CMD_I2C:
+            scan_i2c_port();
+            break;
+          case CMD_CTN:
+            {
+              float t1 = read_ntc_temperature(NTC1);
+              float t2 = read_ntc_temperature(NTC2);
+              Serial.print("NTC1: "); Serial.print(t1); Serial.print(" C, ");
+              Serial.print("NTC2: "); Serial.print(t2); Serial.println(" C");
+            }
+            break;
+          case CMD_INA:
+            get_current_sensor_data();
+            break;
+          case CMD_NONE:
+          default:
+            Serial.println("Unknown command.");
+            break;
+        }
       }
 
       delay(100); // Short delay to avoid flooding

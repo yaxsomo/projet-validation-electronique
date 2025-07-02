@@ -30,4 +30,16 @@ typedef enum {
   NTC2 = 2
 } NTC_devices_t;
 
+
+// Command type enum for BLE commands
+enum CommandType {
+  CMD_NONE,
+  CMD_LED,
+  CMD_SPI,
+  CMD_BUZZER,
+  CMD_I2C,
+  CMD_CTN,
+  CMD_INA
+};
+
 #endif // CONFIGURATION_H
