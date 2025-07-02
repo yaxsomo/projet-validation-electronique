@@ -67,3 +67,17 @@ void TMP126::writeRegister(uint8_t reg, uint16_t value) {
 
   delayMicroseconds(1);
 }
+
+bool TMP126::verifyDevice() {
+  digitalWrite(_cs, LOW);
+  SPI.transfer(0x9E);  // READ_ID command
+  uint32_t id = 0;
+  id |= ((uint32_t)SPI.transfer(0x00)) << 24;
+  id |= ((uint32_t)SPI.transfer(0x00)) << 16;
+  id |= ((uint32_t)SPI.transfer(0x00)) << 8;
+  id |= ((uint32_t)SPI.transfer(0x00)) << 0;
+  digitalWrite(_cs, HIGH);
+
+  Serial.printf("TMP126 Device ID: 0x%08lX\n", id);
+  return (id == 0x55660101);
+}

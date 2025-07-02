@@ -14,6 +14,7 @@ public:
   float readTemperature();
   uint16_t readRegister(uint8_t reg);
   void writeRegister(uint8_t reg, uint16_t value);
+  bool verifyDevice();
 
 private:
   uint8_t _cs;
