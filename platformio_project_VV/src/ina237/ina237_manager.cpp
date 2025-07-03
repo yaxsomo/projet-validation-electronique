@@ -13,9 +13,9 @@ void setup_current_sensor(){
   }
   Serial.println("Found INA237 chip");
   // set shunt resistance and max current
-  ina237.setShunt(0.0005, 2.0);
+  ina237.setShunt(0.0005, 20.0);
 
-  ina237.setAveragingCount(INA2XX_COUNT_16);
+  ina237.setAveragingCount(INA2XX_COUNT_128);
   uint16_t counts[] = {1, 4, 16, 64, 128, 256, 512, 1024};
   Serial.print("Averaging counts: ");
   Serial.println(counts[ina237.getAveragingCount()]);

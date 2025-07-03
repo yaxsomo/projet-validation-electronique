@@ -1,8 +1,9 @@
 #include "tmp126.h"
 #include "configuration.h"
+#include "alarm_manager/alarm_manager.h"
 
 SPISettings TMP126_SPI_SETTINGS(1000000, MSBFIRST, SPI_MODE0);
-
+TMP126 tmp126(TMP126_CS);
 TMP126::TMP126(uint8_t cs_pin) : _cs(cs_pin) {}
 
 void TMP126::begin() {
@@ -10,6 +11,12 @@ void TMP126::begin() {
   digitalWrite(_cs, HIGH); // Deselect
 
   SPI.begin(TMP126_SCK, TMP126_MISO, TMP126_MOSI, _cs); // SCK, MISO, MOSI, SS
+
+  if (!tmp126.verifyDevice()) {
+    Serial.println("TMP126 verification failed!");
+    raiseAlarm(ALARM_SENSOR_MISSING);
+    while (1); // Halt system
+  }
 }
 
 float TMP126::readTemperature() {
@@ -69,17 +76,8 @@ void TMP126::writeRegister(uint8_t reg, uint16_t value) {
 }
 
 bool TMP126::verifyDevice() {
-  SPI.beginTransaction(TMP126_SPI_SETTINGS);
-  digitalWrite(_cs, LOW);
-  SPI.transfer16(0x9E);  // READ_ID command
-  uint32_t id = 0;
-  id |= ((uint32_t)SPI.transfer16(0x00)) << 24;
-  id |= ((uint32_t)SPI.transfer16(0x00)) << 16;
-  id |= ((uint32_t)SPI.transfer16(0x00)) << 8;
-  id |= ((uint32_t)SPI.transfer16(0x00)) << 0;
-  digitalWrite(_cs, HIGH);
-  SPI.endTransaction();
+  uint16_t id = readRegister(0x0C);  // Device ID register
 
-  Serial.printf("TMP126 Device ID: 0x%08lX\n", id);
-  return (id == 0x55660101);
+  Serial.printf("TMP126 Device ID: 0x%04X\n", id);
+  return (id == 0x2126);
 }

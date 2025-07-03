@@ -23,7 +23,7 @@
 
 // Peripheral Objects
 extern Adafruit_INA237 ina237;
-TMP126 tmp126(TMP126_CS);
+extern TMP126 tmp126;
 extern bool deviceConnected;
 extern BLECharacteristic *pCharacteristic;
 std::string lastValue = "";
@@ -74,8 +74,8 @@ void setup() {
 
   // Initialize I2C
   Serial.printf("Initializing I2C...");
-  Wire.begin();
   Wire.setPins(21, 22);
+  Wire.begin();
   Serial.printf("Done.\n");
 
   separator(); // -------------------------------------
@@ -90,11 +90,6 @@ void setup() {
   // Initialize TMP126
   Serial.printf("Initializing TMP126...");
   tmp126.begin();
-  // if (!tmp126.verifyDevice()) {
-  // Serial.println("❌ TMP126 verification failed!");
-  // raiseAlarm(ALARM_SENSOR_MISSING);
-  // while (1); // Halt system
-  // }
   Serial.printf("Done.\n");
 
   separator(); // -------------------------------------
@@ -178,9 +173,9 @@ void loop() {
 
   // Check for current spike
   float current = ina237.getCurrent_mA();
-  if (current > 1500) {
+  if (current > abs(1500)) {
     raiseAlarm(ALARM_CURRENT_SPIKE);
-    Serial.println("⚠️  Current spike detected!");
+    Serial.println("Current spike detected!");
   }
 
   delay(100); // Optional: short idle delay when not connected
