@@ -2,11 +2,6 @@
 #ifndef CONFIGURATION_H
 #define CONFIGURATION_H
 
-
-// BLE Configuration
-#define BLE_CHARACTERISTIC_UUID "abcd1234-5678-1234-5678-123456789abc" // Custom Characteristic UUID
-#define BLE_SERVICE_UUID "12345678-1234-5678-1234-56789abcdef0"
-
 // TMP126 SPI Pin Definitions
 #define TMP126_CS   5
 #define TMP126_SCK  18
